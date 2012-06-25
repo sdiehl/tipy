@@ -82,7 +82,7 @@ class Shell(InteractiveConsole):
             exec code in self.locals
         except SystemExit:
             raise
-        except Exception as e:
+        except Exception:
             print traceback.format_exc()
         else:
             if softspace(sys.stdout, 0):
@@ -91,7 +91,7 @@ class Shell(InteractiveConsole):
     def runsource(self, source, filename="<input>", symbol="single"):
         try:
             code = self.compile(source, filename, symbol)
-        except (OverflowError, SyntaxError, ValueError) as e:
+        except (OverflowError, SyntaxError, ValueError):
             print traceback.format_exc()
             return False
 
@@ -167,10 +167,16 @@ def exec_block(source, formatter):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('source', type=str)
+    parser.add_argument('source', default='-', nargs='?', type=str)
     parser.add_argument('--formatter', default='colorful', type=str)
+    parser.add_argument('--css'   , action="store_true", help='Router service config')
 
     args = parser.parse_args()
+
+    if args.css:
+        formatter = HtmlFormatter(style=args.formatter)
+        sys.stdout.write(formatter.get_style_defs('.highlight'))
+        sys.exit(0)
 
     if args.source == '-':
         source = sys.stdin.read()
