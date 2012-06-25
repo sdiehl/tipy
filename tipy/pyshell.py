@@ -9,7 +9,8 @@ import traceback
 from code import InteractiveConsole, softspace
 from pprint import pformat
 
-from pygments.formatters import HtmlFormatter
+from pygments.formatters import HtmlFormatter, get_formatter_by_name
+from pygments.styles import get_style_by_name
 from pygments.lexers import get_lexer_by_name
 from pygments import highlight
 
@@ -106,9 +107,11 @@ class Shell(InteractiveConsole):
         self.runcode(code)
         return False
 
-def exec_block(source, formatter):
+def exec_block(source, style, formatter):
     _lexer = get_lexer_by_name('pycon')
-    formatter = HtmlFormatter(style=formatter)
+
+    formatter = get_formatter_by_name(formatter)
+    formatter.style = get_style_by_name(style)
 
     interactions = []
     interp = Shell()
@@ -168,22 +171,23 @@ def exec_block(source, formatter):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('source', default='-', nargs='?', type=str)
-    parser.add_argument('--formatter', default='colorful', type=str)
+    parser.add_argument('--style', default='colorful', type=str)
+    parser.add_argument('--format', default='html', type=str)
     parser.add_argument('--css'   , action="store_true", help='Router service config')
 
     args = parser.parse_args()
 
     if args.css:
-        formatter = HtmlFormatter(style=args.formatter)
-        sys.stdout.write(formatter.get_style_defs('.highlight'))
+        htmlformat = HtmlFormatter(style=args.style)
+        sys.stdout.write(htmlformat.get_style_defs('.highlight'))
         sys.exit(0)
 
-    if args.source == '-':
+    if args.source == '-' or not args.source:
         source = sys.stdin.read()
     else:
         source = open(args.source).read()
 
-    stdout = exec_block(source, formatter=args.formatter)
+    stdout = exec_block(source, style=args.style, formatter=args.format)
     sys.stdout.write(stdout)
 
 if __name__ == "__main__":
