@@ -3,6 +3,7 @@ A modified version of the core interactive shell which handles
 captures all execution output.
 """
 
+import re
 import sys
 import argparse
 import traceback
@@ -168,12 +169,28 @@ def exec_block(source, style, formatter):
     output = '\n'.join(filter_cat([a,b]) for a,b in interactions)
     return highlight(output, _lexer, formatter) + show
 
+def preprocess_source(rawsource, style, formatter):
+    CODE_REGEX = re.compile(r"```(?P<compiler>\w+)(?P<code>.*?)```", re.MULTILINE | re.DOTALL)
+
+    def preprocess_block(matchobj):
+        match    = matchobj.groupdict()
+        compiler = match['compiler']
+        source   = match['code']
+
+        if compiler == 'pycon':
+            return exec_block(source, style, formatter)
+        else:
+            return 'not python'
+
+    return re.sub(CODE_REGEX, preprocess_block, rawsource, re.U)
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('source', default='-', nargs='?', type=str)
     parser.add_argument('--style', default='colorful', type=str)
     parser.add_argument('--format', default='html', type=str)
-    parser.add_argument('--css'   , action="store_true", help='Router service config')
+    parser.add_argument('--css', action="store_true", help='Router service config')
+    parser.add_argument('--preprocess', action="store_true", help='Preprocess a markdown file from stdin')
 
     args = parser.parse_args()
 
@@ -181,6 +198,11 @@ def main():
         htmlformat = HtmlFormatter(style=args.style)
         sys.stdout.write(htmlformat.get_style_defs('.highlight'))
         sys.exit(0)
+
+    if args.preprocess:
+        source = sys.stdin.read()
+        processed = preprocess_source(source, args.style, args.format)
+        sys.stdout.write(processed)
 
     if args.source == '-' or not args.source:
         source = sys.stdin.read()
