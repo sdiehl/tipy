@@ -108,7 +108,7 @@ class Shell(InteractiveConsole):
         self.runcode(code)
         return False
 
-def exec_block(source, style, formatter, shell=False):
+def exec_block(source, style, formatter, shell=False, dohighlight=True):
     _lexer = get_lexer_by_name('pycon')
 
     formatter = get_formatter_by_name(formatter)
@@ -161,7 +161,7 @@ def exec_block(source, style, formatter, shell=False):
             # effects and do output
             if shell:
                 output = interp.push(inline)
-                interactions += [('', str(output))]
+                #interactions += [('', str(output))]
             else:
                 output = interp.push(inline)
                 interactions += [(line, str(output))]
@@ -175,7 +175,11 @@ def exec_block(source, style, formatter, shell=False):
             #show = '$%s$' % latex(show, mode='inline')
 
     output = '\n'.join(filter_cat([a,b]) for a,b in interactions)
-    return highlight(output, _lexer, formatter) + show
+
+    if dohighlight:
+        return highlight(output, _lexer, formatter) + show
+    else:
+        return output + show
 
 def preprocess_source(rawsource, style, formatter):
     CODE_REGEX = re.compile(r"```(?P<compiler>\w+)(?P<code>.*?)```", re.MULTILINE | re.DOTALL)
@@ -187,9 +191,9 @@ def preprocess_source(rawsource, style, formatter):
         source   = match['code']
 
         if compiler == 'pycon':
-            return exec_block(source, style, formatter, shell=True)
+            return CODE_SPAN(exec_block(source, style, formatter, shell=True, dohighlight=False))
         elif compiler == 'pyexec':
-            return exec_block(source, style, formatter, shell=False)
+            return CODE_SPAN(exec_block(source, style, formatter, shell=False, dohighlight=False))
         else:
             return matchobj.group()
 
@@ -214,6 +218,7 @@ def main():
         source = sys.stdin.read()
         processed = preprocess_source(source, args.style, args.format)
         sys.stdout.write(processed)
+        return
 
     if args.source == '-' or not args.source:
         source = sys.stdin.read()
