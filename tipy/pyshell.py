@@ -108,7 +108,7 @@ class Shell(InteractiveConsole):
         self.runcode(code)
         return False
 
-def exec_block(source, style, formatter):
+def exec_block(source, style, formatter, shell=False):
     _lexer = get_lexer_by_name('pycon')
 
     formatter = get_formatter_by_name(formatter)
@@ -155,8 +155,16 @@ def exec_block(source, style, formatter):
 
         else:
             inline = line
-            output = interp.push(inline)
-            interactions += [('', str(output))]
+
+            # We're in shell mode so we can have hidden
+            # "preperation lines", which can still execute side
+            # effects and do output
+            if shell:
+                output = interp.push(inline)
+                interactions += [('', str(output))]
+            else:
+                output = interp.push(inline)
+                interactions += [(line, str(output))]
 
     # TODO: interleave passthru output with the corresponding
     # caller, right now it just appends it on the end.
@@ -171,6 +179,7 @@ def exec_block(source, style, formatter):
 
 def preprocess_source(rawsource, style, formatter):
     CODE_REGEX = re.compile(r"```(?P<compiler>\w+)(?P<code>.*?)```", re.MULTILINE | re.DOTALL)
+    CODE_SPAN = lambda s: """```python\n%s\n```""" % s
 
     def preprocess_block(matchobj):
         match    = matchobj.groupdict()
@@ -178,9 +187,11 @@ def preprocess_source(rawsource, style, formatter):
         source   = match['code']
 
         if compiler == 'pycon':
-            return exec_block(source, style, formatter)
+            return exec_block(source, style, formatter, shell=True)
+        elif compiler == 'pyexec':
+            return exec_block(source, style, formatter, shell=False)
         else:
-            return 'not python'
+            return matchobj.group()
 
     return re.sub(CODE_REGEX, preprocess_block, rawsource, re.U)
 

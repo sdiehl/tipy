@@ -8,7 +8,7 @@ setup(
     author_email='stephen.m.diehl@gmail.com.com',
     description='Python preprocessor',
     packages=find_packages(),
-    install_requires=['pygments'],
+    install_requires=[],
     data_files=[],
     entry_points={
         'console_scripts': [
