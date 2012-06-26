@@ -181,6 +181,24 @@ def exec_block(source, style, formatter, shell=False, dohighlight=True):
     else:
         return output + show
 
+def exec_source(source, style, formatter, shell=False, dohighlight=True):
+    _lexer = get_lexer_by_name('python')
+
+    bc = compile(source, '<stdin>', 'exec')
+    cache = FileCacher()
+    ostdout = sys.stdout
+
+    sys.stdout = cache
+    exec bc in {}
+    output = cache.flush()
+    sys.stdout.write(output)
+    sys.stdout = ostdout
+
+    if dohighlight:
+        return highlight(output, _lexer, formatter)
+    else:
+        return output
+
 def preprocess_source(rawsource, style, formatter):
     CODE_REGEX = re.compile(r"```(?P<compiler>\w+)(?P<code>.*?)```", re.MULTILINE | re.DOTALL)
     CODE_SPAN = lambda s: """```python\n%s\n```""" % s
@@ -193,7 +211,10 @@ def preprocess_source(rawsource, style, formatter):
         if compiler == 'pycon':
             return CODE_SPAN(exec_block(source, style, formatter, shell=True, dohighlight=False))
         elif compiler == 'pyexec':
-            return CODE_SPAN(exec_block(source, style, formatter, shell=False, dohighlight=False))
+            return (
+                CODE_SPAN(source) + '\n\n' +
+                CODE_SPAN(exec_source(source, style, formatter, shell=False, dohighlight=False))
+            )
         else:
             return matchobj.group()
 
