@@ -16,7 +16,7 @@ from pygments.lexers import get_lexer_by_name
 from pygments import highlight
 
 passthru_commands = {
-    #'dataframe' : lambda df: df.to_html(),
+    'dataframe' : lambda df: df.to_html(),
     #'tex'       : lambda sym: '$$%s$$' % latex(sym),
     #'inlinetex' : lambda sym: '$%s$' % latex(sym),
     #'numpy'     : lambda arr: '$$%s$$' % LatexPrinter()._print_ndarray(arr)[1:-2],
@@ -170,16 +170,12 @@ def exec_block(source, style, formatter, shell=False, dohighlight=True):
     # caller, right now it just appends it on the end.
     show = filter_cat(passthru_output)
 
-    #if not isinstance(show, basestring):
-        #if 'sympy' in show.__module__:
-            #show = '$%s$' % latex(show, mode='inline')
-
     output = '\n'.join(filter_cat([a,b]) for a,b in interactions)
 
     if dohighlight:
-        return highlight(output, _lexer, formatter) + show
+        return highlight(output, _lexer, formatter), show
     else:
-        return output + show
+        return output, show
 
 def exec_source(source, style, formatter, shell=False, dohighlight=True):
     _lexer = get_lexer_by_name('python')
@@ -195,13 +191,13 @@ def exec_source(source, style, formatter, shell=False, dohighlight=True):
     sys.stdout = ostdout
 
     if dohighlight:
-        return highlight(output, _lexer, formatter)
+        return highlight(output, _lexer, formatter), ''
     else:
-        return output
+        return output, ''
 
 def preprocess_source(rawsource, style, formatter):
     CODE_REGEX = re.compile(r"```(?P<compiler>\w+)(?P<code>.*?)```", re.MULTILINE | re.DOTALL)
-    CODE_SPAN = lambda s: """```python\n%s\n```""" % s
+    CODE_SPAN = lambda s,a: """```python\n%s\n```\n\n%s""" % (s,a)
 
     def preprocess_block(matchobj):
         match    = matchobj.groupdict()
@@ -209,11 +205,11 @@ def preprocess_source(rawsource, style, formatter):
         source   = match['code']
 
         if compiler == 'pycon':
-            return CODE_SPAN(exec_block(source, style, formatter, shell=True, dohighlight=False))
+            return CODE_SPAN(*exec_block(source, style, formatter, shell=True, dohighlight=False))
         elif compiler == 'pyexec':
             return (
-                CODE_SPAN(source) + '\n\n' +
-                CODE_SPAN(exec_source(source, style, formatter, shell=False, dohighlight=False))
+                CODE_SPAN(source, '') + '\n\n' +
+                CODE_SPAN(*exec_source(source, style, formatter, shell=False, dohighlight=False))
             )
         else:
             return matchobj.group()
